@@ -14,8 +14,11 @@ bot = telebot.TeleBot(TOKEN)
 msg_id = 0
 links = []
 
+count = 0
+media_id = 0
 
-@bot.message_handler(commands=['/start'])
+
+@bot.message_handler(content_types=['text'])
 def welcome(message):
     con = sqlite3.connect('users.db')
     cur = con.cursor()
@@ -86,9 +89,17 @@ def listener(message):
             bot.register_next_step_handler(text, listener)
 
     elif message.content_type == 'photo':
-        print(message)
+        global count, media_id
+
+        if media_id == message.media_group_id:
+            count += 1
+
+        if message.media_group_id:
+            media_id = message.media_group_id
+
         file = bot.get_file(message.photo[-1].file_id)
         filename, file_exstension = os.path.splitext(file.file_path)
+
         downloaded_file = bot.download_file(file.file_path)
         src = 'files/' + str(message.photo[-1].file_id) + file_exstension
 
@@ -96,14 +107,17 @@ def listener(message):
             f.write(downloaded_file)
 
         link = upload(src, str(message.photo[-1].file_id) + file_exstension)
+
         if link:
             links.append(link)
-            os.remove(src)
-            text = bot.reply_to(message, "Этот файл скачан на Google Drive\n\n")
+            text = bot.reply_to(message, "Этот файл скачан на Google Drive\n\n"
+                                         f"Ссылка на файл: {link}")
             bot.register_next_step_handler(text, listener)
 
+        if len(links) == count:
+            print('ok-')
+
     else:
-        print(message)
         text = bot.send_message(message.chat.id, f"Тип файла: {message.content_type}")
         bot.register_next_step_handler(text, listener)
 
@@ -222,3 +236,4 @@ def send_email(message):
 
 if __name__ == '__main__':
     bot.polling(none_stop=True, interval=0)
+

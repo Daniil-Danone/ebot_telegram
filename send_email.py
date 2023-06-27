@@ -8,7 +8,6 @@ from email.mime.multipart import MIMEMultipart
 load_dotenv(find_dotenv())
 EMAIL = os.environ.get('EMAIL')
 PASSWORD = os.environ.get('PASSWORD')
-print(EMAIL, PASSWORD)
 
 
 def mail_send(text, address):
