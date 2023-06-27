@@ -1,5 +1,7 @@
+from forward_handlers import *
 import os
 import smtplib
+import time
 from email.mime.text import MIMEText
 from dotenv import load_dotenv, find_dotenv
 from email.mime.multipart import MIMEMultipart
@@ -10,24 +12,49 @@ EMAIL = os.environ.get('EMAIL')
 PASSWORD = os.environ.get('PASSWORD')
 
 
-def mail_send(text, address):
-    print(text, address)
+# bot.send_message(message.from_user.id, "Произошла ошибка при отправке письма")
+def send_email(message, email, caption, links):
+    if message.forward_from:
+        chat, sender = forward_from(message)
+    elif message.forward_from_chat:
+        # Канал
+        chat, sender = forward_from_chat(message)
+    else:
+        chat, sender = "", ""
+        
+    attachments = lambda: f'''
+        <br>
+        <b>Вложения:</b>
+        <br>
+        <i>{''.join(map(lambda x: f'<p>{x}</p>', links))}</i>'''
+    
+    attachments = attachments() if len(links) > 0 else ""
+    
+    body = f'''<b>ВАЖНОЕ - Вы отметили данное сообщение</b>
+        <p><b>Чат:</b> <i>{chat}</i></p>
+        <p><b>Отправитель:</b> <i>{sender}</i></p>
+        <p><b>Время написания:</b> <i>{converted_time(message.forward_date)}</i></p>
+        <b>Оригинальное сообщение:</b>
+        <br>
+        <i>{caption}</i>
+        {attachments}
+        '''
+    
     html = f"""
         <html>
         <head></head>
         <body>
-            <p>{text}</p>
+            <p>{body}</p>
         </body>
         </html>
         """
-    text = "Важное!"
 
     message = MIMEMultipart('alternative')
     message['Subject'] = "Link"
     message['From'] = EMAIL
-    message['To'] = address
+    message['To'] = email
 
-    part1 = MIMEText(text, 'plain')
+    part1 = MIMEText("Важное", 'plain')
     part2 = MIMEText(html, 'html')
 
     message.attach(part1)
@@ -39,5 +66,9 @@ def mail_send(text, address):
     mail.ehlo()
     mail.login(EMAIL, PASSWORD)
 
-    mail.sendmail(EMAIL, address, message.as_string())
+    mail.sendmail(EMAIL, email, message.as_string())
     mail.quit()
+
+
+def converted_time(x):
+    return time.strftime("%d.%M.%Y %H:%M:%S", time.localtime(x))
